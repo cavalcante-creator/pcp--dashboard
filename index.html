@@ -13,7 +13,7 @@ body{font-family:'Segoe UI',sans-serif;background:#eef1f5;min-height:100vh}
 
 /* HEADER */
 .header{background:white;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:sticky;top:0;z-index:100}
-.logo{height:48px;object-fit:contain}
+.logo{height:36px;object-fit:contain}
 .titulo{font-size:22px;font-weight:700;color:#2c3e50;letter-spacing:-0.3px}
 .header-right{width:140px}
 
@@ -62,8 +62,8 @@ button{cursor:pointer;border:none;border-radius:7px;font-size:13px;font-weight:6
 .btn-pdf:hover{background:#3d5166}
 .btn-ver{background:#7f8c8d;color:white;padding:5px 10px;font-size:11px;border-radius:6px}
 .btn-ver:hover{background:#636e72}
-.btn-anexar{display:inline-flex;align-items:center;background:#8e44ad;color:white;padding:5px 10px;font-size:11px;border-radius:6px;cursor:pointer;font-weight:600}
-.btn-anexar:hover{background:#7d3c98}
+.btn-anexar{display:inline-flex;align-items:center;background:#2c3e50;color:white;padding:5px 10px;font-size:11px;border-radius:6px;cursor:pointer;font-weight:600}
+.btn-anexar:hover{background:#3d5166}
 .btn-anexar input{display:none}
 .rancho-status{padding:6px 12px 10px;font-size:11px}
 .rancho-ok{color:#27ae60;font-weight:600}
@@ -205,7 +205,7 @@ function renderizar() {
   const linhaSel=document.getElementById("sel-linha").value;
   const turnoSel=document.getElementById("sel-turno").value;
   const statusSel=document.getElementById("sel-status").value;
-  const semanasSel=[...document.getElementById("sel-semana").selectedOptions].map(o=>o.value);
+  const semanasSel=document.getElementById("sel-semana").value;
   const ordemPesq=document.getElementById("inp-ordem").value.trim();
   const produtoPesq=document.getElementById("inp-produto").value.trim().toLowerCase();
   const mostrarTodas=document.getElementById("chk-todas").checked;
@@ -230,7 +230,7 @@ function renderizar() {
           if(statusSel!=="Todos"&&statusLimpo!==statusSel) continue;
           if(ordemPesq&&!ordem.includes(ordemPesq)) continue;
           if(produtoPesq&&!produto.toLowerCase().includes(produtoPesq)) continue;
-          if(semanasSel.length>0&&!semanasSel.includes(getSemana(item["Data"]||""))) continue;
+          if(semanasSel&&getSemana(item["Data"]||"")!==semanasSel) continue;
           itensFiltrados.push(Object.assign({},item,{Ordem:ordem}));
         }
       }
@@ -471,8 +471,8 @@ window.addEventListener("DOMContentLoaded",init);
       <select id="sel-turno" onchange="renderizar()"><option value="Todos">Todos</option></select>
     </div>
     <div class="filtro-grupo">
-      <label>📆 Semanas</label>
-      <select id="sel-semana" multiple onchange="renderizar()" style="height:76px;min-width:150px"></select>
+      <label>📆 Semana</label>
+      <select id="sel-semana" onchange="renderizar()"><option value="">Todas</option></select>
     </div>
     <div class="filtro-grupo">
       <label>🔎 Ordem</label>
@@ -490,7 +490,7 @@ window.addEventListener("DOMContentLoaded",init);
   <div class="filtros-acoes">
     <button class="btn-hoje" onclick="setHoje()">📅 Hoje</button>
     <label class="checkbox-wrapper">
-      <input type="checkbox" id="chk-todas" checked onchange="renderizar()">
+      <input type="checkbox" id="chk-todas" onchange="renderizar()">
       Mostrar todas as datas
     </label>
     <button class="btn-baixar" onclick="exportarPagina()">📥 Baixar Página</button>
