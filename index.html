@@ -31,7 +31,9 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh;color
 #sel-linha,#sel-turno,#sel-semana,#sel-status{min-width:120px}
 #inp-data{min-width:130px}
 #inp-ordem,#inp-produto{min-width:110px}
-.filtros-acoes{display:flex;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #f5f5f5}
+.filtros-acoes{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #f5f5f5}
+.acoes-esquerda{display:flex;gap:8px;align-items:center}
+.acoes-direita{display:flex;gap:8px;align-items:center}
 .checkbox-wrapper{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;cursor:pointer}
 .checkbox-wrapper input{width:14px;height:14px;cursor:pointer}
 
@@ -41,8 +43,8 @@ button{cursor:pointer;border:none;border-radius:6px;font-size:12px;font-weight:6
 .btn-hoje:hover{background:#dfe6e9}
 .btn-baixar{background:#ecf0f1;color:#2c3e50;padding:6px 14px;height:30px;border:1.5px solid #ddd}
 .btn-baixar:hover{background:#dfe6e9}
-.btn-atualizar{background:#8e44ad;color:white;padding:6px 14px;height:30px}
-.btn-atualizar:hover{background:#7d3c98}
+.btn-atualizar{background:#ecf0f1;color:#2c3e50;padding:6px 14px;height:30px;border:1.5px solid #ddd}
+.btn-atualizar:hover{background:#dfe6e9}
 .btn-atualizar:disabled{background:#bdc3c7;cursor:not-allowed}
 
 /* CONTEÚDO */
@@ -546,13 +548,17 @@ window.addEventListener("DOMContentLoaded",init);
     </div>
   </div>
   <div class="filtros-acoes">
-    <button class="btn-hoje" onclick="setHoje()">📅 Hoje</button>
-    <label class="checkbox-wrapper">
-      <input type="checkbox" id="chk-todas" onchange="renderizar()">
-      Mostrar todas as datas
-    </label>
-    <button class="btn-atualizar" id="btn-atualizar" onclick="atualizarDados()">🔄 Atualizar</button>
-    <button class="btn-baixar" onclick="exportarPagina()">📥 Baixar Página</button>
+    <div class="acoes-esquerda">
+      <button class="btn-hoje" onclick="setHoje()">📅 Hoje</button>
+      <label class="checkbox-wrapper">
+        <input type="checkbox" id="chk-todas" onchange="renderizar()">
+        Mostrar todas as datas
+      </label>
+    </div>
+    <div class="acoes-direita">
+      <button class="btn-atualizar" id="btn-atualizar" onclick="atualizarDados()">🔄 Atualizar</button>
+      <button class="btn-baixar" onclick="exportarPagina()">📥 Baixar Página</button>
+    </div>
   </div>
 </div>
 
