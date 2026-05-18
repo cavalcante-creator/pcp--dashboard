@@ -14,11 +14,11 @@ body{font-family:'Segoe UI',sans-serif;background:#f5f7fa;margin:20px}
 .logo{width:200px;margin-top:10px}
 .titulo{flex-grow:1;text-align:center;font-size:26px;font-weight:600}
 .vazio{width:140px}
-.filtros{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;align-items:flex-end}
-.filtro-grupo{display:flex;flex-direction:column;gap:4px}
-.filtro-grupo label{font-size:13px;font-weight:600;color:#2c3e50}
-.filtro-grupo select,.filtro-grupo input{padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;background:white;min-width:130px}
-.filtro-grupo select[multiple]{height:70px}
+.filtros{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:16px;align-items:flex-end;background:white;padding:16px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.filtro-grupo{display:flex;flex-direction:column;gap:5px}
+.filtro-grupo label{font-size:12px;font-weight:600;color:#2c3e50;text-transform:uppercase;letter-spacing:0.03em}
+.filtro-grupo select,.filtro-grupo input{padding:7px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:white;min-width:140px;height:36px}
+.filtro-grupo select[multiple]{height:80px}
 .botoes-linha{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
 .linha h2{background:#2c3e50;color:white;padding:10px;border-radius:8px}
 .cards{display:flex;flex-wrap:wrap}
@@ -211,32 +211,26 @@ function renderizar() {
         const srHtml=temRancho
           ?"<span style='color:green;font-size:11px;'>\u2705 Rancho: "+ranchosMeta[ordem].numero+"</span>"
           :"<span style='color:red;font-size:11px;'>\u274c Nenhum rancho</span>";
-        const card=document.createElement('div');
-        card.className='card '+classe;
-        card.innerHTML='<b>'+produto+'</b><br>Ordem: '+ordem+'<br>Turno: '+turnoItem+'<br>Qtde: '+qtdeTotal+'<br>Pendente: '+qtdePendente+'<br>Status: '+statusOrig+'<br>';
-        const btnPDF=document.createElement('button');
-        btnPDF.textContent='📄 Gerar PDF';
-        btnPDF.onclick=function(){gerarPDF(produto,ordem,turnoItem,qtdeTotal,qtdePendente,statusOrig,data,linha);};
-        card.appendChild(btnPDF);
-        card.innerHTML+='<br>';
-        const lbl=document.createElement('label');
-        lbl.className='upload-label';
-        lbl.textContent='📎 Anexar Rancho';
-        const inp=document.createElement('input');
-        inp.type='file';inp.accept='application/pdf';
-        inp.onchange=function(){anexarRancho(this,ordem);};
-        lbl.appendChild(inp);
-        card.appendChild(lbl);
-        const btnVer=document.createElement('button');
-        btnVer.textContent='👁 Ver Rancho';
-        btnVer.onclick=function(){verRancho(ordem);};
-        card.appendChild(btnVer);
-        const statusDiv=document.createElement('div');
-        statusDiv.id='status_'+ordem;
-        statusDiv.style.cssText='font-size:11px;margin-top:4px;';
-        statusDiv.innerHTML=srHtml;
-        card.appendChild(statusDiv);
-        bloco+=card.outerHTML;
+        const pEsc=produto.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const oEsc=ordem.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const tEsc=turnoItem.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const qtEsc=qtdeTotal.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const qpEsc=qtdePendente.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const sEsc=statusOrig.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const dEsc=data.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const lEsc=linha.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        bloco+="<div class='card "+classe+"'>"
+          +"<b>"+produto+"</b><br>"
+          +"Ordem: "+ordem+"<br>"
+          +"Turno: "+turnoItem+"<br>"
+          +"Qtde: "+qtdeTotal+"<br>"
+          +"Pendente: "+qtdePendente+"<br>"
+          +"Status: "+statusOrig+"<br>"
+          +"<button onclick=\"gerarPDF('"+pEsc+"','"+oEsc+"','"+tEsc+"','"+qtEsc+"','"+qpEsc+"','"+sEsc+"','"+dEsc+"','"+lEsc+"')\">📄 Gerar PDF</button><br>"
+          +"<label class='upload-label'>📎 Anexar Rancho<input type='file' accept='application/pdf' onchange=\"anexarRancho(this,'"+oEsc+"')\"></label>"
+          +" <button onclick=\"verRancho('"+oEsc+"')\">👁 Ver Rancho</button>"
+          +"<div id='status_"+oEsc+"' style='font-size:11px;margin-top:4px;'>"+srHtml+"</div>"
+          +"</div>";
       }
       bloco+="</div>";
     }
@@ -255,6 +249,7 @@ async function exportarPagina() {
 }
 
 async function gerarPDF(produto,ordem,turno,qtde,pendente,status,data,linha) {
+  if(!window.jspdf){alert('Biblioteca PDF ainda carregando. Tente novamente em alguns segundos.');return;}
   const{jsPDF}=window.jspdf;
   const pdf=new jsPDF('p','mm','a4');
   const ML=10,LARGURA=190,PAGE_H=297,MB=10,Y_RODAPE=PAGE_H-MB-95;
