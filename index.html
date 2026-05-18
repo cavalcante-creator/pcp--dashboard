@@ -37,10 +37,13 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh;color
 
 /* BOTÕES TOPO */
 button{cursor:pointer;border:none;border-radius:6px;font-size:12px;font-weight:600;transition:all 0.15s}
-.btn-hoje{background:#27ae60;color:white;padding:6px 14px;height:30px}
-.btn-hoje:hover{background:#229954}
-.btn-baixar{background:#2980b9;color:white;padding:6px 14px;height:30px}
-.btn-baixar:hover{background:#2471a3}
+.btn-hoje{background:#ecf0f1;color:#2c3e50;padding:6px 14px;height:30px;border:1.5px solid #ddd}
+.btn-hoje:hover{background:#dfe6e9}
+.btn-baixar{background:#ecf0f1;color:#2c3e50;padding:6px 14px;height:30px;border:1.5px solid #ddd}
+.btn-baixar:hover{background:#dfe6e9}
+.btn-atualizar{background:#8e44ad;color:white;padding:6px 14px;height:30px}
+.btn-atualizar:hover{background:#7d3c98}
+.btn-atualizar:disabled{background:#bdc3c7;cursor:not-allowed}
 
 /* CONTEÚDO */
 .conteudo-wrap{padding:12px 16px 40px}
@@ -458,6 +461,22 @@ function agendarRefresh(){
   }, 5*60*1000);
 }
 
+async function atualizarDados(){
+  const btn=document.getElementById("btn-atualizar");
+  btn.disabled=true;
+  btn.textContent="⏳ Atualizando...";
+  try{
+    const novosDados=await carregarDados();
+    dadosTotal=novosDados;
+    renderizar();
+    atualizarHora();
+  }catch(e){
+    alert("Erro ao atualizar: "+e.message);
+  }
+  btn.disabled=false;
+  btn.textContent="🔄 Atualizar";
+}
+
 function atualizarHora(){
   const agora=new Date();
   const h=String(agora.getHours()).padStart(2,'0');
@@ -532,6 +551,7 @@ window.addEventListener("DOMContentLoaded",init);
       <input type="checkbox" id="chk-todas" onchange="renderizar()">
       Mostrar todas as datas
     </label>
+    <button class="btn-atualizar" id="btn-atualizar" onclick="atualizarDados()">🔄 Atualizar</button>
     <button class="btn-baixar" onclick="exportarPagina()">📥 Baixar Página</button>
   </div>
 </div>
