@@ -18,6 +18,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f5f7fa;margin:20px}
 .filtro-grupo{display:flex;flex-direction:column;gap:4px}
 .filtro-grupo label{font-size:13px;font-weight:600;color:#2c3e50}
 .filtro-grupo select,.filtro-grupo input{padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;background:white;min-width:130px}
+.filtro-grupo select[multiple]{height:70px}
 .botoes-linha{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
 .linha h2{background:#2c3e50;color:white;padding:10px;border-radius:8px}
 .cards{display:flex;flex-wrap:wrap}
@@ -47,82 +48,109 @@ let ranchosB64 = {};
 function esc(v){return String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,' ').replace(/\r/g,'')}
 function toFloat(v){try{return parseFloat(String(v).replace(/\./g,'').replace(',','.'))||0}catch(e){return 0}}
 function nomeLinha(l){return l.replace("BASE_","").replace(/_/g," ")}
-function getSemana(ds){
-  try{
-    const p=ds.split('/');if(p.length<3)return"";
-    const dt=new Date(+p[2],+p[1]-1,+p[0]);
-    const jan1=new Date(dt.getFullYear(),0,1);
-    const sem=Math.ceil(((dt-jan1)/86400000+jan1.getDay()+1)/7);
-    return"Semana "+sem+"/"+dt.getFullYear();
-  }catch(e){return""}
-}
-function limparStatus(s){
-  if(!s)return"";s=String(s).trim().toUpperCase();
-  if(s.includes("AGUARDANDO"))return"AGUARDANDO";
-  if(s.includes("PRODUÇÃO")||s.includes("PRODUCAO"))return"EM PRODUÇÃO";
-  if(s.includes("LIBERADA"))return"LIBERADA";
+
+// Converte qualquer formato de data para dd/mm/yyyy
+function converterData(val) {
+  if(!val || String(val).trim()==="") return "";
+  const s = String(val).trim();
+  // Já está em dd/mm/yyyy
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  // Formato longo: "Thu Mar 05 2026 00:00:00 GMT..."
+  try {
+    const dt = new Date(s);
+    if(!isNaN(dt.getTime())) {
+      const dd = String(dt.getDate()).padStart(2,'0');
+      const mm = String(dt.getMonth()+1).padStart(2,'0');
+      const yyyy = dt.getFullYear();
+      return dd+"/"+mm+"/"+yyyy;
+    }
+  } catch(e) {}
   return s;
 }
-function dataInputParaBR(v){if(!v)return"";const p=v.split('-');return p[2]+"/"+p[1]+"/"+p[0]}
-function setHoje(){
+
+function getSemana(ds) {
+  if(!ds) return "";
+  try {
+    const p = ds.split('/');
+    if(p.length<3) return "";
+    const dt = new Date(+p[2], +p[1]-1, +p[0]);
+    const jan1 = new Date(dt.getFullYear(),0,1);
+    const sem = Math.ceil(((dt-jan1)/86400000+jan1.getDay()+1)/7);
+    return "Semana "+sem+"/"+dt.getFullYear();
+  } catch(e) {return ""}
+}
+
+function limparStatus(s) {
+  if(!s) return "";
+  s = String(s).trim().toUpperCase();
+  if(s.includes("AGUARDANDO")) return "AGUARDANDO";
+  if(s.includes("PRODUÇÃO")||s.includes("PRODUCAO")) return "EM PRODUÇÃO";
+  if(s.includes("LIBERADA")) return "LIBERADA";
+  return s;
+}
+
+function dataInputParaBR(v) {if(!v)return"";const p=v.split('-');return p[2]+"/"+p[1]+"/"+p[0]}
+
+function setHoje() {
   const d=new Date();
   document.getElementById("inp-data").value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   renderizar();
 }
 
-// ── JSONP: única forma garantida de funcionar sem CORS ──
-function jsonpFetch(url){
+function jsonpFetch(url) {
   return new Promise((resolve, reject) => {
-    const cbName = '_cb_' + Date.now() + '_' + Math.round(Math.random()*1e6);
+    const cbName = '_cb_'+Date.now()+'_'+Math.round(Math.random()*1e6);
     const script = document.createElement('script');
     let done = false;
-
     window[cbName] = function(data) {
-      done = true;
-      delete window[cbName];
-      script.remove();
-      resolve(data);
+      done=true; delete window[cbName]; script.remove(); resolve(data);
     };
-
     script.onerror = function() {
-      if(!done) { done=true; delete window[cbName]; script.remove(); reject(new Error('JSONP falhou')); }
+      if(!done){done=true;delete window[cbName];script.remove();reject(new Error('JSONP falhou'));}
     };
-
-    const sep = url.includes('?') ? '&' : '?';
-    script.src = url + sep + 'callback=' + cbName + '&_ts=' + Date.now();
+    const sep = url.includes('?')?'&':'?';
+    script.src = url+sep+'callback='+cbName+'&_ts='+Date.now();
     document.head.appendChild(script);
-
-    setTimeout(()=>{ if(!done){ done=true; delete window[cbName]; script.remove(); reject(new Error('Timeout JSONP')); } }, 30000);
+    setTimeout(()=>{if(!done){done=true;delete window[cbName];script.remove();reject(new Error('Timeout'));}} ,30000);
   });
 }
 
-// ── Carregar dados via JSONP ──
-async function carregarDados(){
-  const data = await jsonpFetch(APPS_SCRIPT_URL + '?acao=dados');
-  if(data && data.erro) throw new Error(data.erro);
-  const lista = [];
-  for(const [aba, rows] of Object.entries(data||{})){
-    (rows||[]).forEach(row => { row["Linha"]=aba; lista.push(row); });
-  }
-  return lista;
-}
-
-async function carregarRanchos(){
-  try{
-    const data = await jsonpFetch(APPS_SCRIPT_URL + '?acao=listar');
-    if(typeof data==='object' && data!==null){
-      for(const[k,v] of Object.entries(data)){
+async function carregarRanchos() {
+  try {
+    const data = await jsonpFetch(APPS_SCRIPT_URL+'?acao=listar');
+    if(typeof data==='object'&&data!==null) {
+      for(const[k,v] of Object.entries(data)) {
         const key=String(k).trim();
         ranchosMeta[key]={numero:v.numero||"",nome:v.nome||""};
         ranchosB64[key]=v.base64||"";
       }
     }
-  }catch(e){console.warn("Ranchos indisponíveis:",e)}
+  } catch(e) {console.warn("Ranchos indisponíveis:",e)}
 }
 
-function buildEstrutura(dados){
+async function carregarDados() {
+  const data = await jsonpFetch(APPS_SCRIPT_URL+'?acao=dados');
+  if(data&&data.erro) throw new Error(data.erro);
+  const lista = [];
+  for(const [aba,rows] of Object.entries(data||{})) {
+    (rows||[]).forEach(row => {
+      // Normaliza a coluna Data (área líquida usa "Z" em vez de "Data")
+      if(!row["Data"] && row["Z"]) row["Data"] = row["Z"];
+      // Converte data para dd/mm/yyyy
+      row["Data"] = converterData(row["Data"]);
+      row["Nova Data"] = converterData(row["Nova Data"]);
+      // Filtra linhas vazias
+      if(!row["Produto"] && !row["Ordem"]) return;
+      row["Linha"] = aba;
+      lista.push(row);
+    });
+  }
+  return lista;
+}
+
+function buildEstrutura(dados) {
   const est={};
-  for(const item of dados){
+  for(const item of dados) {
     const linha=nomeLinha(item["Linha"]);
     const dataOrig=item["Data"]||"";
     const novaData=String(item["Nova Data"]||"").trim();
@@ -136,7 +164,7 @@ function buildEstrutura(dados){
   return est;
 }
 
-function popularFiltros(){
+function popularFiltros() {
   const linhas=[...new Set(dadosTotal.map(i=>nomeLinha(i["Linha"])))].sort();
   const turnos=[...new Set(dadosTotal.map(i=>i["Turno"]).filter(Boolean))].sort();
   const semanas=[...new Set(dadosTotal.map(i=>getSemana(i["Data"])).filter(Boolean))].sort();
@@ -151,7 +179,7 @@ function popularFiltros(){
   statusList.forEach(s=>selStatus.add(new Option(s,s)));
 }
 
-function renderizar(){
+function renderizar() {
   const linhaSel=document.getElementById("sel-linha").value;
   const turnoSel=document.getElementById("sel-turno").value;
   const statusSel=document.getElementById("sel-status").value;
@@ -163,31 +191,31 @@ function renderizar(){
   const estrutura=buildEstrutura(dadosTotal);
   let html="";
 
-  for(const[linha,datas]of Object.entries(estrutura).sort()){
-    if(linhaSel!=="Todas"&&linha!==linhaSel)continue;
+  for(const[linha,datas]of Object.entries(estrutura).sort()) {
+    if(linhaSel!=="Todas"&&linha!==linhaSel) continue;
     let bloco="<div class='linha'><h2>"+linha+"</h2>";
     let temLinha=false;
 
-    for(const[data,turnos]of Object.entries(datas).sort()){
-      if(!mostrarTodas&&data!==dataSel)continue;
+    for(const[data,turnos]of Object.entries(datas).sort()) {
+      if(!mostrarTodas&&data!==dataSel) continue;
       let itensFiltrados=[];
-      for(const[turno,itens]of Object.entries(turnos)){
-        if(turnoSel!=="Todos"&&turno!==turnoSel)continue;
-        for(const item of itens){
+      for(const[turno,itens]of Object.entries(turnos)) {
+        if(turnoSel!=="Todos"&&turno!==turnoSel) continue;
+        for(const item of itens) {
           const ordem=String(item["Ordem"]||"").trim();
           const produto=item["Produto"]||"";
           const statusLimpo=limparStatus(item["Status"]);
-          if(statusSel!=="Todos"&&statusLimpo!==statusSel)continue;
-          if(ordemPesq&&!ordem.includes(ordemPesq))continue;
-          if(produtoPesq&&!produto.toLowerCase().includes(produtoPesq))continue;
-          if(semanasSel.length>0&&!semanasSel.includes(getSemana(item["Data"]||"")))continue;
+          if(statusSel!=="Todos"&&statusLimpo!==statusSel) continue;
+          if(ordemPesq&&!ordem.includes(ordemPesq)) continue;
+          if(produtoPesq&&!produto.toLowerCase().includes(produtoPesq)) continue;
+          if(semanasSel.length>0&&!semanasSel.includes(getSemana(item["Data"]||""))) continue;
           itensFiltrados.push(Object.assign({},item,{Ordem:ordem}));
         }
       }
-      if(!itensFiltrados.length)continue;
+      if(!itensFiltrados.length) continue;
       temLinha=true;
       bloco+="<h3>📅 "+data+"</h3><div class='cards'>";
-      for(const item of itensFiltrados){
+      for(const item of itensFiltrados) {
         const produto=item["Produto"]||"";
         const ordem=String(item["Ordem"]||"").trim();
         const statusOrig=item["Status"]||"";
@@ -219,12 +247,12 @@ function renderizar(){
       bloco+="</div>";
     }
     bloco+="</div>";
-    if(temLinha)html+=bloco;
+    if(temLinha) html+=bloco;
   }
   document.getElementById("conteudo").innerHTML=html||"<p style='color:#888;padding:20px'>Nenhum item encontrado com os filtros selecionados.</p>";
 }
 
-async function exportarPagina(){
+async function exportarPagina() {
   const{jsPDF}=window.jspdf;
   const el=document.getElementById("conteudo");
   const canvas=await html2canvas(el,{scale:2});
@@ -233,11 +261,10 @@ async function exportarPagina(){
   pdf.save("pagina_completa.pdf");
 }
 
-async function exportarCard(produto,ordem,turno,qtde,pendente,status,data,linha){
+async function exportarCard(produto,ordem,turno,qtde,pendente,status,data,linha) {
   const{jsPDF}=window.jspdf;
   const pdf=new jsPDF('p','mm','a4');
-  const ML=10,LARGURA=190,PAGE_H=297,MB=10;
-  const Y_RODAPE=PAGE_H-MB-95;
+  const ML=10,LARGURA=190,PAGE_H=297,MB=10,Y_RODAPE=PAGE_H-MB-95;
   function campo(x,yy,w,h,label,valor){
     pdf.setFontSize(7);pdf.setFont("helvetica","bold");pdf.text(label,x+1,yy-1.2);
     pdf.setDrawColor(180,180,180);pdf.rect(x,yy,w,h);pdf.setDrawColor(0,0,0);
@@ -282,16 +309,16 @@ async function exportarCard(produto,ordem,turno,qtde,pendente,status,data,linha)
   const yOL=y+5.5,yOB=yOL+3.5,aO=Y_RODAPE-yOB;
   pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("OBSERVAÇÕES:",ML,yOL);
   pdf.setDrawColor(180,180,180);pdf.rect(ML,yOB,LARGURA,aO>20?aO:20);pdf.setDrawColor(0,0,0);
-  let yR2=Y_RODAPE;
-  pdf.setFillColor(235,235,235);pdf.rect(ML,yR2,LARGURA,7.5,'F');pdf.rect(ML,yR2,LARGURA,7.5);
-  pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("STATUS DA ORDEM:",ML+4,yR2+5);
-  pdf.rect(68,yR2+2,3.5,3.5);pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
-  pdf.text("Ordem Finalizada",73,yR2+5);pdf.rect(125,yR2+2,3.5,3.5);pdf.text("Ordem irá finalizar outro dia",130,yR2+5);yR2+=20;
-  pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("RESP. APONTAMENTO:",ML,yR2);pdf.text("ASSINATURA DO OPERADOR:",108,yR2);yR2+=12;
-  pdf.setDrawColor(150,150,150);pdf.line(ML,yR2,100,yR2);pdf.line(108,yR2,200,yR2);pdf.setDrawColor(0,0,0);
-  pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);pdf.text("Nome / Assinatura",ML,yR2+4);pdf.text("Nome / Assinatura",108,yR2+4);yR2+=12;
-  pdf.setFillColor(235,235,235);pdf.rect(ML,yR2,LARGURA,7,'F');
-  pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("APONTAMENTO NO SISTEMA",105,yR2+4.8,{align:"center"});yR2+=9;
+  let yR=Y_RODAPE;
+  pdf.setFillColor(235,235,235);pdf.rect(ML,yR,LARGURA,7.5,'F');pdf.rect(ML,yR,LARGURA,7.5);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("STATUS DA ORDEM:",ML+4,yR+5);
+  pdf.rect(68,yR+2,3.5,3.5);pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
+  pdf.text("Ordem Finalizada",73,yR+5);pdf.rect(125,yR+2,3.5,3.5);pdf.text("Ordem irá finalizar outro dia",130,yR+5);yR+=20;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("RESP. APONTAMENTO:",ML,yR);pdf.text("ASSINATURA DO OPERADOR:",108,yR);yR+=12;
+  pdf.setDrawColor(150,150,150);pdf.line(ML,yR,100,yR);pdf.line(108,yR,200,yR);pdf.setDrawColor(0,0,0);
+  pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);pdf.text("Nome / Assinatura",ML,yR+4);pdf.text("Nome / Assinatura",108,yR+4);yR+=12;
+  pdf.setFillColor(235,235,235);pdf.rect(ML,yR,LARGURA,7,'F');
+  pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("APONTAMENTO NO SISTEMA",105,yR+4.8,{align:"center"});yR+=9;
   function linhaAp(hora,yy){
     pdf.rect(ML,yy,LARGURA,7);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(hora,ML+2,yy+4.8);
     pdf.text("Apontado:",ML+14,yy+4.8);pdf.rect(ML+34,yy+1.8,3.5,3.5);
@@ -303,15 +330,15 @@ async function exportarCard(produto,ordem,turno,qtde,pendente,status,data,linha)
     pdf.rect(ML+145,yy+0.5,20,6);pdf.text("Pend:",ML+167,yy+4.8);
     pdf.rect(ML+177,yy+0.5,13,6);pdf.setDrawColor(0,0,0);
   }
-  linhaAp("12:00",yR2);yR2+=9;linhaAp("17:15",yR2);yR2+=14;
-  pdf.setFillColor(255,249,220);pdf.rect(ML,yR2,LARGURA,20,'F');
-  pdf.setDrawColor(200,160,0);pdf.rect(ML,yR2,LARGURA,20);pdf.setDrawColor(0,0,0);
-  pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);pdf.text("INSTRUÇÕES PARA CONTROLE DA PRODUÇÃO",ML+4,yR2+5);
+  linhaAp("12:00",yR);yR+=9;linhaAp("17:15",yR);yR+=14;
+  pdf.setFillColor(255,249,220);pdf.rect(ML,yR,LARGURA,20,'F');
+  pdf.setDrawColor(200,160,0);pdf.rect(ML,yR,LARGURA,20);pdf.setDrawColor(0,0,0);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);pdf.text("INSTRUÇÕES PARA CONTROLE DA PRODUÇÃO",ML+4,yR+5);
   pdf.setFont("helvetica","normal");
   ["• As ordens de fabricação devem ser fabricadas até a quantidade final para melhor controle da produção diária.",
    "• Favor entregar esta folha ao responsável às 12:00 e às 17:15 para o apontamento no sistema.",
    "• Sinalizar acima se a ordem foi finalizada ou se sobrou material e continuará no próximo dia."
-  ].forEach((t,idx)=>pdf.text(t,ML+4,yR2+9.5+idx*4));
+  ].forEach((t,idx)=>pdf.text(t,ML+4,yR+9.5+idx*4));
   const b64R=ranchosB64[ordem]||null;
   if(b64R&&b64R.length>100){
     try{
@@ -376,11 +403,7 @@ async function init(){
     renderizar();
   }catch(e){
     document.getElementById("conteudo").innerHTML=
-      "<div class='erro'>"
-      +"<strong>❌ Não foi possível carregar os dados.</strong><br><br>"
-      +"Verifique se o Apps Script foi atualizado com o endpoint <code>dados</code> e o suporte a <strong>JSONP</strong> (<code>callback</code>), e republicado.<br><br>"
-      +"<small>Erro: "+e.message+"</small>"
-      +"</div>";
+      "<div class='erro'><strong>❌ Erro ao carregar dados.</strong><br><br><small>"+e.message+"</small></div>";
   }
 }
 window.addEventListener("DOMContentLoaded",init);
@@ -397,7 +420,7 @@ window.addEventListener("DOMContentLoaded",init);
   <div class="filtro-grupo"><label>🏭 Linha</label><select id="sel-linha" onchange="renderizar()"><option value="Todas">Todas</option></select></div>
   <div class="filtro-grupo"><label>📅 Data</label><input type="date" id="inp-data" onchange="renderizar()"></div>
   <div class="filtro-grupo"><label>⏱ Turno</label><select id="sel-turno" onchange="renderizar()"><option value="Todos">Todos</option></select></div>
-  <div class="filtro-grupo"><label>📆 Semanas</label><select id="sel-semana" multiple onchange="renderizar()" style="height:80px;min-width:160px;"></select></div>
+  <div class="filtro-grupo"><label>📆 Semanas</label><select id="sel-semana" multiple onchange="renderizar()"></select></div>
   <div class="filtro-grupo"><label>🔎 Buscar Ordem</label><input type="text" id="inp-ordem" oninput="renderizar()" placeholder="Nº da ordem"></div>
   <div class="filtro-grupo"><label>🔎 Buscar Produto</label><input type="text" id="inp-produto" oninput="renderizar()" placeholder="Nome do produto"></div>
   <div class="filtro-grupo"><label>📌 Status</label><select id="sel-status" onchange="renderizar()"><option value="Todos">Todos</option></select></div>
