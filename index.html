@@ -173,8 +173,20 @@ async function carregarRanchos() {
         ranchosMeta[key]={numero:v.numero||"",nome:v.nome||""};
         ranchosB64[key]=v.base64||"";
       }
+      localStorage.setItem('ranchosMeta', JSON.stringify(ranchosMeta));
+      localStorage.setItem('ranchosB64', JSON.stringify(ranchosB64));
     }
-  } catch(e){console.warn("Ranchos indisponíveis:",e)}
+  } catch(e){
+    console.warn("Ranchos indisponíveis na API, tentando carregar do cache local:", e);
+    try {
+      const metaCache = localStorage.getItem('ranchosMeta');
+      const b64Cache = localStorage.getItem('ranchosB64');
+      if (metaCache) ranchosMeta = JSON.parse(metaCache);
+      if (b64Cache) ranchosB64 = JSON.parse(b64Cache);
+    } catch (err) {
+      console.warn("Erro ao carregar ranchos do cache:", err);
+    }
+  }
 }
 
 async function carregarDados() {
@@ -440,6 +452,8 @@ function anexarRancho(input,ordem){
     document.body.appendChild(form);form.submit();
     setTimeout(()=>{
       ranchosMeta[ordem]={numero:nr,nome:file.name};ranchosB64[ordem]=b64;
+      localStorage.setItem('ranchosMeta', JSON.stringify(ranchosMeta));
+      localStorage.setItem('ranchosB64', JSON.stringify(ranchosB64));
       if(sel){sel.innerHTML="✅ Rancho: "+nr;sel.style.color="green";}
       form.remove();
     },1500);
