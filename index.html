@@ -96,6 +96,51 @@ button{cursor:pointer;border:none;border-radius:6px;font-size:12px;font-weight:6
 @keyframes spin{to{transform:rotate(360deg)}}
 .erro{text-align:center;padding:40px;font-size:14px;color:#c0392b;background:#fdf2f2;border-radius:10px;margin:20px;line-height:2}
 .vazio{text-align:center;padding:60px;color:#95a5a6;font-size:14px}
+
+/* ===== STATUS OPERACIONAL (novo - independente) ===== */
+.op-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;margin:4px 10px 2px;border:1.5px solid transparent}
+.op-sem-status{background:#f0f0f0;color:#888;border-color:#ddd}
+.op-separacao{background:#fff8e1;color:#e65100;border-color:#ffb300}
+.op-entregue{background:#e8f5e9;color:#2e7d32;border-color:#66bb6a}
+.btn-op-sep{background:#fff8e1;color:#e65100;border:1.5px solid #ffb300;padding:5px 8px;font-size:10px;border-radius:5px;font-weight:700;flex:1}
+.btn-op-sep:hover,.btn-op-sep.ativo{background:#ffb300;color:#fff}
+.btn-op-ent{background:#e8f5e9;color:#2e7d32;border:1.5px solid #66bb6a;padding:5px 8px;font-size:10px;border-radius:5px;font-weight:700;flex:1}
+.btn-op-ent:hover,.btn-op-ent.ativo{background:#43a047;color:#fff}
+.card-op-actions{display:flex;gap:4px;padding:4px 10px 6px;border-top:1px solid #f5f5f5}
+
+/* Ocultar controles de rancho (manter código) */
+.rancho-oculto{display:none!important}
+
+/* Filtro rápido pendências */
+.btn-pendencias{background:#fff3e0;color:#bf360c;border:1.5px solid #ff7043;padding:6px 12px;height:30px;font-size:11px;font-weight:700;border-radius:6px}
+.btn-pendencias:hover,.btn-pendencias.ativo{background:#ff7043;color:#fff;border-color:#e64a19}
+
+/* Filtro status operacional */
+#sel-op-status{min-width:150px}
+
+/* ===== RESPONSIVIDADE MOBILE ===== */
+@media(max-width:600px){
+  .header{padding:8px 12px;height:auto;flex-wrap:wrap;gap:6px}
+  .titulo{font-size:16px}
+  .filtros-wrap{margin:8px 8px 0;padding:10px 12px}
+  .filtros{gap:6px}
+  .filtro-grupo select,.filtro-grupo input[type=text],.filtro-grupo input[type=date]{height:38px;font-size:13px}
+  #sel-linha,#sel-turno,#sel-semana,#sel-status,#sel-op-status{min-width:100px}
+  .filtros-acoes{flex-direction:column;gap:8px;align-items:stretch}
+  .acoes-esquerda,.acoes-direita{flex-wrap:wrap;gap:6px}
+  .btn-hoje,.btn-baixar,.btn-atualizar,.btn-pendencias{height:38px;font-size:12px;padding:8px 14px;flex:1}
+  .conteudo-wrap{padding:8px 8px 40px}
+  .cards{gap:8px}
+  .card{width:100%;min-width:0}
+  .btn-pdf,.btn-ver,.btn-op-sep,.btn-op-ent{height:34px;font-size:11px;padding:6px 8px}
+  .btn-anexar{height:34px;font-size:11px;padding:6px 8px}
+  .card-produto{font-size:12px}
+  .info-val{font-size:13px}
+}
+@media(min-width:601px) and (max-width:900px){
+  .card{width:calc(50% - 5px)}
+}
+
 </style>
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwP-9bV6vYVDz7sxaY8NzlLBVTm3-KpE6Bd5hpBRlIIPuXi55yzkCuHJoP5CaxoLm1R/exec";
@@ -103,6 +148,50 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABX8AAADTCAYAAADZ
 
 let dadosTotal = [], ranchosMeta = {}, ranchosB64 = {};
 let carregando = false;
+
+// ===== STATUS OPERACIONAL INDEPENDENTE =====
+let statusOperacional = {}; // { ordem: 'sem-status' | 'separacao' | 'entregue' }
+
+function getOpStatus(ordem) {
+  return statusOperacional[ordem] || 'sem-status';
+}
+
+function setOpStatus(ordem, novoStatus) {
+  if (statusOperacional[ordem] === novoStatus) {
+    statusOperacional[ordem] = 'sem-status';
+  } else {
+    statusOperacional[ordem] = novoStatus;
+  }
+  try { localStorage.setItem('statusOperacional', JSON.stringify(statusOperacional)); } catch(e){}
+  // Atualizar badge e botões sem re-renderizar tudo
+  const badgeEl = document.getElementById('op_badge_' + ordem);
+  const btnSep = document.getElementById('op_sep_' + ordem);
+  const btnEnt = document.getElementById('op_ent_' + ordem);
+  const st = getOpStatus(ordem);
+  if (badgeEl) { badgeEl.className = 'op-badge ' + opBadgeClass(st); badgeEl.innerHTML = opBadgeLabel(st); }
+  if (btnSep) { btnSep.className = 'btn-op-sep' + (st === 'separacao' ? ' ativo' : ''); }
+  if (btnEnt) { btnEnt.className = 'btn-op-ent' + (st === 'entregue' ? ' ativo' : ''); }
+}
+
+function opBadgeClass(st) {
+  if (st === 'separacao') return 'op-separacao';
+  if (st === 'entregue') return 'op-entregue';
+  return 'op-sem-status';
+}
+
+function opBadgeLabel(st) {
+  if (st === 'separacao') return '🟡 Em Separação';
+  if (st === 'entregue') return '🟢 Entregue';
+  return '⚪ Sem Status';
+}
+
+function carregarStatusOperacional() {
+  try {
+    const s = localStorage.getItem('statusOperacional');
+    if (s) statusOperacional = JSON.parse(s);
+  } catch(e) {}
+}
+
 
 function esc(v){
   return String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,' ').replace(/\r/g,'');
@@ -239,10 +328,13 @@ function renderizar() {
   const turnoSel=document.getElementById("sel-turno").value;
   const statusSel=document.getElementById("sel-status").value;
   const semanasSel=document.getElementById("sel-semana").value;
-  const ordemPesq=document.getElementById("inp-ordem").value.trim();
+  const ordemPesq=document.getElementById("inp-ordem").value.trim().toLowerCase();
   const produtoPesq=document.getElementById("inp-produto").value.trim().toLowerCase();
   const mostrarTodas=document.getElementById("chk-todas").checked;
   const dataSel=dataInputParaBR(document.getElementById("inp-data").value);
+  // Novos filtros
+  const opStatusSel = document.getElementById("sel-op-status") ? document.getElementById("sel-op-status").value : "Todos";
+  const somentePendencias = document.getElementById("chk-pendencias") ? document.getElementById("chk-pendencias").checked : false;
   const estrutura=buildEstrutura(dadosTotal);
   let html="";
 
@@ -261,8 +353,24 @@ function renderizar() {
           const produto=item["Produto"]||"";
           const statusLimpo=limparStatus(item["Status"]);
           if(statusSel!=="Todos"&&statusLimpo!==statusSel) continue;
-          if(ordemPesq&&!ordem.includes(ordemPesq)) continue;
+          // Pesquisa ampliada: OF, código, produto, descrição parcial
+          if(ordemPesq) {
+            const op = ordemPesq.toLowerCase();
+            const matchOrdem = ordem.toLowerCase().includes(op);
+            const matchCodigo = String(item["Código"]||"").toLowerCase().includes(op)||String(item["Codigo"]||"").toLowerCase().includes(op);
+            const matchProduto = produto.toLowerCase().includes(op);
+            if(!matchOrdem && !matchCodigo && !matchProduto) continue;
+          }
           if(produtoPesq&&!produto.toLowerCase().includes(produtoPesq)) continue;
+          // Filtro status operacional independente
+          const opSt = getOpStatus(String(item["Ordem"]||"").trim());
+          if(opStatusSel !== "Todos") {
+            if(opStatusSel === "sem-status" && opSt !== "sem-status") continue;
+            if(opStatusSel === "separacao" && opSt !== "separacao") continue;
+            if(opStatusSel === "entregue" && opSt !== "entregue") continue;
+          }
+          // Filtro rápido somente pendências (sem-status e separacao, oculta entregue)
+          if(somentePendencias && opSt === "entregue") continue;
           if(semanasSel&&getSemana(item["Data"]||"")!==semanasSel) continue;
           itensFiltrados.push(Object.assign({},item,{Ordem:ordem}));
         }
@@ -503,7 +611,22 @@ function atualizarHora(){
   document.getElementById("hora-atualizacao").textContent=d+"/"+mo+" às "+h+":"+m+":"+s;
 }
 
+function togglePendencias() {
+  const chk = document.getElementById('chk-pendencias');
+  const btn = document.getElementById('btn-pendencias');
+  chk.checked = !chk.checked;
+  if (chk.checked) {
+    btn.classList.add('ativo');
+    // Reset op status filter when using pendencias
+    document.getElementById('sel-op-status').value = 'Todos';
+  } else {
+    btn.classList.remove('ativo');
+  }
+  renderizar();
+}
+
 async function init(){
+  carregarStatusOperacional();
   const d=new Date();
   document.getElementById("inp-data").value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   document.getElementById("conteudo").innerHTML="<div class='loading'><div class='spinner'></div>Carregando dados...</div>";
@@ -560,6 +683,15 @@ window.addEventListener("DOMContentLoaded",init);
       <label>📌 Status</label>
       <select id="sel-status" onchange="renderizar()"><option value="Todos">Todos</option></select>
     </div>
+    <div class="filtro-grupo">
+      <label>🚦 Status Operacional</label>
+      <select id="sel-op-status" onchange="renderizar()">
+        <option value="Todos">Todos</option>
+        <option value="sem-status">⚪ Sem Status</option>
+        <option value="separacao">🟡 Em Separação</option>
+        <option value="entregue">🟢 Entregue</option>
+      </select>
+    </div>
   </div>
   <div class="filtros-acoes">
     <div class="acoes-esquerda">
@@ -568,12 +700,14 @@ window.addEventListener("DOMContentLoaded",init);
         <input type="checkbox" id="chk-todas" onchange="renderizar()">
         Mostrar todas as datas
       </label>
+      <button class="btn-pendencias" id="btn-pendencias" onclick="togglePendencias()">🚨 Só Pendências</button>
     </div>
     <div class="acoes-direita">
       <button class="btn-atualizar" id="btn-atualizar" onclick="atualizarDados()">🔄 Atualizar</button>
       <button class="btn-baixar" onclick="exportarPagina()">📥 Baixar Página</button>
     </div>
   </div>
+  <input type="checkbox" id="chk-pendencias" onchange="renderizar()" style="display:none">
 </div>
 
 <div class="conteudo-wrap">
