@@ -406,19 +406,25 @@ function renderizar() {
           :"<span class='rancho-no'>❌ Nenhum rancho</span>";
         const pE=esc(produto),oE=esc(ordem),tE=esc(turnoItem);
         const qtE=esc(qtdeTotal),qpE=esc(qtdePendente),sE=esc(statusOrig),dE=esc(data),lE=esc(linha);
+        const opSt2=getOpStatus(ordem);
         bloco+="<div class='card "+classe+"'>"
           +"<div class='card-produto'>"+produto+"</div>"
+          +"<div class='op-badge "+opBadgeClass(opSt2)+"' id='op_badge_"+oE+"'>"+opBadgeLabel(opSt2)+"</div>"
           +"<div class='card-info'><span class='info-label'>Ordem</span><span class='info-val'>"+ordem+"</span></div>"
           +"<div class='card-info'><span class='info-label'>Turno</span><span class='info-val'>"+turnoItem+"</span></div>"
           +"<div class='card-info'><span class='info-label'>Qtde</span><span class='info-val'>"+qtdeTotal+"</span></div>"
           +"<div class='card-info'><span class='info-label'>Pendente</span><span class='info-val'>"+qtdePendente+"</span></div>"
           +"<div class='card-info'><span class='info-label'>Status</span><span class='info-val status-badge'>"+statusOrig+"</span></div>"
+          +"<div class='card-op-actions'>"
+          +"<button class='btn-op-sep"+(opSt2==='separacao'?' ativo':'')+"' id='op_sep_"+oE+"' onclick=\"setOpStatus('"+oE+"','separacao')\">🟡 Em Separação</button>"
+          +"<button class='btn-op-ent"+(opSt2==='entregue'?' ativo':'')+"' id='op_ent_"+oE+"' onclick=\"setOpStatus('"+oE+"','entregue')\">🟢 Entregue</button>"
+          +"</div>"
           +"<div class='card-actions'>"
           +"<button class='btn-pdf' onclick=\"gerarPDF('"+pE+"','"+oE+"','"+tE+"','"+qtE+"','"+qpE+"','"+sE+"','"+dE+"','"+lE+"')\">📄 PDF</button>"
-          +"<label class='btn-anexar'>📎 Rancho<input type='file' accept='application/pdf' onchange=\"anexarRancho(this,'"+oE+"')\"></label>"
-          +"<button class='btn-ver' onclick=\"verRancho('"+oE+"')\">👁 Ver</button>"
+          +"<label class='btn-anexar rancho-oculto'>📎 Rancho<input type='file' accept='application/pdf' onchange=\"anexarRancho(this,'"+oE+"')\"></label>"
+          +"<button class='btn-ver rancho-oculto' onclick=\"verRancho('"+oE+"')\">👁 Ver</button>"
           +"</div>"
-          +"<div id='status_"+oE+"' class='rancho-status'>"+srHtml+"</div>"
+          +"<div id='status_"+oE+"' class='rancho-status rancho-oculto'>"+srHtml+"</div>"
           +"</div>";
       }
       bloco+="</div>";
