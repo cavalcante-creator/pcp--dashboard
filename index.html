@@ -753,6 +753,7 @@ function renderizar() {
 
   for(const[linha,datas] of Object.entries(estrutura).sort()) {
     if(linhaSel!=="Todas"&&linha!==linhaSel) continue;
+    let linhaItemCount=0;
     let bloco="<div class='linha'><h2>"+linha+"</h2>";
     let temLinha=false;
 
